@@ -3,92 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arrastrar páginas de PDF como imágenes</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <title>PDF to Images</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        header {
+            background-color: #6200ea;
+            color: white;
+            padding: 20px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        #file-input {
             margin: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         #pdf-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 20px;
+            justify-content: center;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
         }
-        .page {
-            position: relative;
-            cursor: grab;
+        .pdf-page {
+            width: 100%;
+            max-width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease;
         }
-        canvas {
-            border: 1px solid #ccc;
+        .pdf-page:hover {
+            transform: scale(1.05);
+        }
+        .pdf-page img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        footer {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #6200ea;
+            color: white;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
 <body>
-    <h1>Arrastrar páginas de PDF como imágenes</h1>
-    <input type="file" id="file-input" accept="application/pdf">
-    <div id="pdf-container"></div>
 
-    <script>
-        const fileInput = document.getElementById('file-input');
-        const pdfContainer = document.getElementById('pdf-container');
 
-        fileInput.addEventListener('change', async (event) => {
-            const file = event.target.files[0];
-            if (file && file.type === 'application/pdf') {
-                const fileReader = new FileReader();
+<input type="file" id="file-input" accept="application/pdf">
+<div id="pdf-container"></div>
 
-                fileReader.onload = async (e) => {
-                    const pdfData = new Uint8Array(e.target.result);
-                    const loadingTask = pdfjsLib.getDocument({ data: pdfData });
-                    
-                    try {
-                        const pdf = await loadingTask.promise;
-                        pdfContainer.innerHTML = ""; // Limpiar el contenedor
+<script>
+    const pdfContainer = document.getElementById('pdf-container');
+    const fileInput = document.getElementById('file-input');
 
-                        // Renderizar cada página del PDF
-                        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                            const page = await pdf.getPage(pageNum);
-                            const viewport = page.getViewport({ scale: 1.5 });
+    fileInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const fileReader = new FileReader();
 
-                            // Crear canvas para la página
-                            const canvas = document.createElement('canvas');
-                            const context = canvas.getContext('2d');
-                            canvas.width = viewport.width;
-                            canvas.height = viewport.height;
+            fileReader.onload = async function () {
+                const pdfData = new Uint8Array(this.result);
 
-                            const renderContext = {
-                                canvasContext: context,
-                                viewport: viewport,
-                            };
+                // Cargar el PDF utilizando pdf.js
+                const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
 
-                            await page.render(renderContext).promise;
+                pdfContainer.innerHTML = ''; // Limpia el contenedor
 
-                            // Contenedor para la página
-                            const pageContainer = document.createElement('div');
-                            pageContainer.classList.add('page');
-                            pageContainer.appendChild(canvas);
+                // Iterar sobre cada página del PDF
+                for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+                    const page = await pdf.getPage(pageNumber);
+                    const viewport = page.getViewport({ scale: 1.5 });
 
-                            // Hacer que el canvas sea arrastrable
-                            canvas.draggable = true;
-                            canvas.addEventListener('dragstart', (e) => {
-                                const imgData = canvas.toDataURL();
-                                e.dataTransfer.setData('text/plain', imgData);
-                                e.dataTransfer.setData('text/html', `<img src="${imgData}" alt="PDF Page">`);
-                            });
+                    // Crear un canvas para renderizar cada página
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
 
-                            pdfContainer.appendChild(pageContainer);
-                        }
-                    } catch (err) {
-                        console.error("Error al cargar el PDF:", err);
-                    }
-                };
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport,
+                    };
 
-                fileReader.readAsArrayBuffer(file);
-            } else {
-                alert("Por favor selecciona un archivo PDF válido.");
-            }
-        });
-    </script>
+                    await page.render(renderContext).promise;
+
+                    // Convertir canvas a imagen
+                    const image = new Image();
+                    image.src = canvas.toDataURL('image/png');
+                    const imageWrapper = document.createElement('div');
+                    imageWrapper.classList.add('pdf-page');
+                    imageWrapper.appendChild(image);
+                    pdfContainer.appendChild(imageWrapper);
+                }
+            };
+
+            fileReader.readAsArrayBuffer(file);
+        }
+    });
+</script>
+
 </body>
 </html>
