@@ -76,13 +76,42 @@
 </head>
 <body>
 
-
+<header>
+    <h1>PDF to Images Viewer</h1>
+</header>
 <input type="file" id="file-input" accept="application/pdf">
 <div id="pdf-container"></div>
+
+<footer>
+    <p>&copy; 2025 PDF Viewer. All rights reserved.</p>
+</footer>
 
 <script>
     const pdfContainer = document.getElementById('pdf-container');
     const fileInput = document.getElementById('file-input');
+
+    // Variables for gesture control
+    let startX = 0;
+    let scrollLeft = 0;
+    let isDragging = false;
+
+    // Event listeners for mobile gestures
+    pdfContainer.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        startX = e.touches[0].pageX - pdfContainer.offsetLeft;
+        scrollLeft = pdfContainer.scrollLeft;
+    });
+
+    pdfContainer.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const x = e.touches[0].pageX - pdfContainer.offsetLeft;
+        const walk = (x - startX) * 2; // Scroll faster
+        pdfContainer.scrollLeft = scrollLeft - walk;
+    });
+
+    pdfContainer.addEventListener('touchend', () => {
+        isDragging = false;
+    });
 
     fileInput.addEventListener('change', async (event) => {
         const file = event.target.files[0];
